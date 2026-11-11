@@ -45,6 +45,7 @@ Registry keys, read at the start of every refresh, so changing them in the datab
 | `realtime_liveFeedIntervalSeconds` | `LIVE_FEED_INTERVAL_SECONDS` | 30 |
 | `realtime_liveFeedOffsetSeconds` | `LIVE_FEED_OFFSET_SECONDS` | 10 |
 | `realtime_liveFeedViewerTimeoutSeconds` | `LIVE_FEED_VIEWER_TIMEOUT_SECONDS` | 180 |
+| `realtime_liveFeedRefreshTimeoutSeconds` | `LIVE_FEED_REFRESH_TIMEOUT_SECONDS` | 20 |
 | `realtime_liveFeedTimestampRefreshSeconds` | `LIVE_FEED_TIMESTAMP_REFRESH_SECONDS` | 300 |
 | `realtime_liveFeedEventRetentionDays` | `LIVE_FEED_EVENT_RETENTION_DAYS` | 30 |
 | `realtime_liveFeedStatusRole` | `LIVE_FEED_STATUS_ROLE` | `realtime_admin` |
@@ -52,6 +53,8 @@ Registry keys, read at the start of every refresh, so changing them in the datab
 | `realtime_liveFeedPaused` | `LIVE_FEED_PAUSED` | false |
 
 Feeds refresh on a schedule aligned to the clock: with the defaults, at 10 and 40 seconds past each minute. An unchanged card isn't written to, apart from its `timestamp` every `realtime_liveFeedTimestampRefreshSeconds`.
+
+Each feed's refresh has `realtime_liveFeedRefreshTimeoutSeconds` to finish. After that it counts as failed and the other feeds carry on, so a data source that hangs can't stop every live card updating. A refresh that finishes after timing out writes nothing, and that feed isn't refreshed again until its data source has answered.
 
 Setting `realtime_liveFeedPaused` to true stops all refreshing from the next cycle, without a restart: nothing is fetched, written or stopped, and open cards keep what they last showed. Set it back to false to resume.
 

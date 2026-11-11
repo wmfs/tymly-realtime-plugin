@@ -376,6 +376,68 @@ describe('Live feed', () => {
     })
   })
 
+  describe('refresh time limit', () => {
+    function deferred () {
+      const handle = {}
+      handle.promise = new Promise(resolve => { handle.resolve = resolve })
+      return handle
+    }
+
+    let service, hung, events, otherFetches
+
+    beforeEach(() => {
+      hung = deferred()
+      otherFetches = 0
+      events = []
+      service = makeService({
+        executions: { a: running(), b: running() },
+        functions: {
+          test_hangs: { args: ['event'], func: () => hung.promise },
+          test_fine: { args: ['event'], func: async () => { otherFetches++; return { data: { n: otherFetches } } } }
+        }
+      })
+      service.eventModel = { create: async doc => { events.push(doc) } }
+      service.refreshTimeoutSeconds = 0.02 // 20ms, set directly for the test
+      service.subscribe({ feed: 'slow', fetchFunction: 'test_hangs', executionName: 'a' })
+      service.subscribe({ feed: 'quick', fetchFunction: 'test_fine', executionName: 'b' })
+    })
+
+    it('gives up on a feed that takes too long, and still refreshes the others', async () => {
+      await service.runCycle()
+
+      expect(otherFetches).to.eql(1)
+      expect(service.statebox.heartbeats.map(h => h.name)).to.eql(['b'])
+
+      const slow = service.status().feeds.find(f => f.feed === 'slow')
+      expect(slow.lastError).to.eql('Timed out after 0.02s')
+      expect(slow.waitingOnPreviousRefresh).to.eql(true)
+      expect(events.find(e => e.event === 'FAILED')).to.include({ feed: 'slow', detail: 'Timed out after 0.02s' })
+    })
+
+    it('does not start another refresh of that feed while the first is still waiting', async () => {
+      let calls = 0
+      service.functions.functions.test_hangs.func = () => { calls++; return hung.promise }
+
+      await service.runCycle()
+      await service.runCycle()
+
+      expect(calls).to.eql(1)
+      expect(otherFetches).to.eql(2)
+    })
+
+    it('writes nothing when a timed-out refresh finishes late, then refreshes normally', async () => {
+      await service.runCycle()
+
+      hung.resolve({ data: { late: true } })
+      await new Promise(resolve => setImmediate(resolve))
+      expect(service.statebox.heartbeats.map(h => h.name)).to.eql(['b'])
+      expect(service.status().feeds.find(f => f.feed === 'slow').waitingOnPreviousRefresh).to.eql(false)
+
+      await service.runCycle()
+      expect(service.statebox.heartbeats.filter(h => h.name === 'a').length).to.eql(1)
+    })
+  })
+
   describe('calling blueprint functions', () => {
     it('passes arguments by name, and supports callbacks', async () => {
       const service = makeService({
