@@ -6,7 +6,7 @@
       "environmentVariableName": "LIVE_FEED_VIEWER_TIMEOUT_SECONDS",
       "value": {
         "type": "integer",
-        "default": 90
+        "default": 180
       }
     },
     "required": [

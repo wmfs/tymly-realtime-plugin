@@ -301,11 +301,19 @@ describe('Live feed', () => {
     })
 
     it('stops a viewer nobody has polled for longer than its timeout', async () => {
-      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 120000) })
+      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 240000) })
       await service.runCycle()
 
       expect(service.statebox.stopped).to.eql(['b'])
       expect(service.listFeeds()[0].viewers).to.eql(['a'])
+    })
+
+    it('keeps a card in a background tab that has polled within the 3-minute default', async () => {
+      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 150000) })
+      await service.runCycle()
+
+      expect(service.statebox.stopped).to.eql([])
+      expect(service.listFeeds()[0].viewers).to.eql(['a', 'b'])
     })
 
     it('drops the feed, without fetching, when no viewers are left', async () => {
@@ -474,7 +482,7 @@ describe('Live feed', () => {
     it('records viewers dropped and stopped', async () => {
       service.subscribe({ feed: 'live', input: { n: 1 }, fetchFunction: 'test_fetch', executionName: 'b', userId: 'bob' })
       service.subscribe({ feed: 'live', input: { n: 1 }, fetchFunction: 'test_fetch', executionName: 'c', userId: 'carol' })
-      service.statebox = fakeStatebox({ a: running(), b: { status: 'STOPPED' }, c: running(T0 - 120000) })
+      service.statebox = fakeStatebox({ a: running(), b: { status: 'STOPPED' }, c: running(T0 - 240000) })
 
       await service.runCycle()
 
@@ -719,6 +727,42 @@ describe('Live feed', () => {
         delete process.env.LIVE_FEED_INTERVAL_SECONDS
         delete process.env.LIVE_FEED_DEBUG
       }
+    })
+
+    it('does nothing while paused, and carries on once unpaused, without a restart', async () => {
+      const values = { realtime_liveFeedPaused: true }
+      let fetches = 0
+      const service = makeService({
+        executions: { a: running() },
+        functions: { test_fetch: { args: ['event'], func: async () => { fetches++; return { data: { n: fetches } } } } }
+      })
+      service.registryKeyModel = registry(values)
+      service.subscribe({ feed: 'live', fetchFunction: 'test_fetch', executionName: 'a' })
+
+      await service.runCycle()
+      await service.runCycle()
+      expect(fetches).to.eql(0)
+      expect(service.statebox.heartbeats).to.eql([])
+      expect(service.status().paused).to.eql(true)
+      expect(service.listFeeds()[0].viewers).to.eql(['a'])
+
+      values.realtime_liveFeedPaused = false
+      await service.runCycle()
+      expect(fetches).to.eql(1)
+      expect(service.statebox.heartbeats.length).to.eql(1)
+      expect(service.status().paused).to.eql(false)
+    })
+
+    it('does not stop cards nobody is polling while paused', async () => {
+      const service = makeService({
+        executions: { a: running(T0 - 24 * 60 * 60 * 1000) },
+        functions: { test_fetch: { args: ['event'], func: async () => ({ data: {} }) } }
+      })
+      service.registryKeyModel = registry({ realtime_liveFeedPaused: 'true' })
+      service.subscribe({ feed: 'live', fetchFunction: 'test_fetch', executionName: 'a' })
+
+      await service.runCycle()
+      expect(service.statebox.stopped).to.eql([])
     })
 
     it('picks up a change at the start of the next cycle, without a restart', async () => {

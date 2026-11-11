@@ -44,20 +44,25 @@ Registry keys, read at the start of every refresh, so changing them in the datab
 | --- | --- | --- |
 | `realtime_liveFeedIntervalSeconds` | `LIVE_FEED_INTERVAL_SECONDS` | 30 |
 | `realtime_liveFeedOffsetSeconds` | `LIVE_FEED_OFFSET_SECONDS` | 10 |
-| `realtime_liveFeedViewerTimeoutSeconds` | `LIVE_FEED_VIEWER_TIMEOUT_SECONDS` | 90 |
+| `realtime_liveFeedViewerTimeoutSeconds` | `LIVE_FEED_VIEWER_TIMEOUT_SECONDS` | 180 |
 | `realtime_liveFeedTimestampRefreshSeconds` | `LIVE_FEED_TIMESTAMP_REFRESH_SECONDS` | 300 |
 | `realtime_liveFeedEventRetentionDays` | `LIVE_FEED_EVENT_RETENTION_DAYS` | 30 |
 | `realtime_liveFeedStatusRole` | `LIVE_FEED_STATUS_ROLE` | `realtime_admin` |
 | `realtime_liveFeedDebug` | `LIVE_FEED_DEBUG` | false |
+| `realtime_liveFeedPaused` | `LIVE_FEED_PAUSED` | false |
 
 Feeds refresh on a schedule aligned to the clock: with the defaults, at 10 and 40 seconds past each minute. An unchanged card isn't written to, apart from its `timestamp` every `realtime_liveFeedTimestampRefreshSeconds`.
+
+Setting `realtime_liveFeedPaused` to true stops all refreshing from the next cycle, without a restart: nothing is fetched, written or stopped, and open cards keep what they last showed. Set it back to false to resume.
+
+The viewer timeout should be comfortably longer than a card's browser poll (`uiRefresh`), because browsers slow down timers in background tabs.
 
 Feeds are held in memory, so this assumes one Tymly instance per database.
 
 ## Seeing what it's doing
 
 - `GET /live-feed/status`, for users with the **Realtime Admin** role (`realtime_admin`): settings, feeds and their viewers, last run, last error.
-- `realtime.live_feed_event`: notable events (subscribed, re-subscribed, changed, finished, dropped, stopped, failed), kept for `realtime_liveFeedEventRetentionDays`.
+- `realtime.live_feed_event`: notable events (subscribed, re-subscribed, changed, finished, dropped, stopped, failed), with the user's id and email, kept for `realtime_liveFeedEventRetentionDays`.
 - `realtime_liveFeedDebug` set to true logs one line per feed per refresh.
 
 ## Testing
