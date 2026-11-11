@@ -425,6 +425,23 @@ describe('Live feed', () => {
       expect(otherFetches).to.eql(2)
     })
 
+    it('tries the feed again once a timed-out refresh has waited six times the limit', async () => {
+      let now = T0
+      service.now = () => now
+      service.viewerTimeoutSeconds = 100000 // still being polled
+      let calls = 0
+      service.functions.functions.test_hangs.func = () => { calls++; return hung.promise }
+
+      await service.runCycle()
+      now += 0.02 * 1000 * 5 // waited 5x the limit: still skipped
+      await service.runCycle()
+      expect(calls).to.eql(1)
+
+      now += 0.02 * 1000 * 2 // waited 7x the limit: tried again
+      await service.runCycle()
+      expect(calls).to.eql(2)
+    })
+
     it('writes nothing when a timed-out refresh finishes late, then refreshes normally', async () => {
       await service.runCycle()
 

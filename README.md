@@ -54,7 +54,7 @@ Registry keys, read at the start of every refresh, so changing them in the datab
 
 Feeds refresh on a schedule aligned to the clock: with the defaults, at 10 and 40 seconds past each minute. An unchanged card isn't written to, apart from its `timestamp` every `realtime_liveFeedTimestampRefreshSeconds`.
 
-Each feed's refresh has `realtime_liveFeedRefreshTimeoutSeconds` to finish. After that it counts as failed and the other feeds carry on, so a data source that hangs can't stop every live card updating. A refresh that finishes after timing out writes nothing, and that feed isn't refreshed again until its data source has answered.
+Each feed's refresh has `realtime_liveFeedRefreshTimeoutSeconds` to finish. After that it counts as failed and the other feeds carry on, so a data source that hangs can't stop every live card updating. A refresh that finishes after timing out writes nothing. That feed isn't refreshed again until its data source answers, or for at most six times the limit (2 minutes by default) in case the query never returns.
 
 Setting `realtime_liveFeedPaused` to true stops all refreshing from the next cycle, without a restart: nothing is fetched, written or stopped, and open cards keep what they last showed. Set it back to false to resume.
 
