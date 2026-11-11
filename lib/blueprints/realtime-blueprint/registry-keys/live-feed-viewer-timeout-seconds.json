@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Viewer Timeout Seconds",
+  "description": "Stop a live card that nobody has polled for this long (e.g. the tab was closed).",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_VIEWER_TIMEOUT_SECONDS",
+      "value": {
+        "type": "integer",
+        "default": 90
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}
