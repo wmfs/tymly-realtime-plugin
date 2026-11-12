@@ -44,7 +44,7 @@ Registry keys, read at the start of every refresh, so changing them in the datab
 | --- | --- | --- |
 | `realtime_liveFeedIntervalSeconds` | `LIVE_FEED_INTERVAL_SECONDS` | 30 |
 | `realtime_liveFeedOffsetSeconds` | `LIVE_FEED_OFFSET_SECONDS` | 10 |
-| `realtime_liveFeedViewerTimeoutSeconds` | `LIVE_FEED_VIEWER_TIMEOUT_SECONDS` | 180 |
+| `realtime_liveFeedViewerTimeoutSeconds` | `LIVE_FEED_VIEWER_TIMEOUT_SECONDS` | 3600 |
 | `realtime_liveFeedRefreshTimeoutSeconds` | `LIVE_FEED_REFRESH_TIMEOUT_SECONDS` | 20 |
 | `realtime_liveFeedTimestampRefreshSeconds` | `LIVE_FEED_TIMESTAMP_REFRESH_SECONDS` | 300 |
 | `realtime_liveFeedEventRetentionDays` | `LIVE_FEED_EVENT_RETENTION_DAYS` | 30 |
@@ -60,7 +60,7 @@ Each feed's refresh has `realtime_liveFeedRefreshTimeoutSeconds` to finish. Afte
 
 Setting `realtime_liveFeedPaused` to true stops all refreshing from the next cycle, without a restart: nothing is fetched, written or stopped, and open cards keep what they last showed. Set it back to false to resume.
 
-The viewer timeout should be comfortably longer than a card's browser poll (`uiRefresh`), because browsers slow down timers in background tabs.
+The viewer timeout is for cleaning up cards whose tab was closed (closing a tab doesn't close the card). Keep it long: browsers slow down or pause polling in background tabs, and people leave live cards open in the background.
 
 Feeds are held in memory, so this assumes one Tymly instance per database.
 

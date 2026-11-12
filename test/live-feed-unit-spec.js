@@ -318,15 +318,15 @@ describe('Live feed', () => {
     })
 
     it('stops a viewer nobody has polled for longer than its timeout', async () => {
-      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 240000) })
+      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 2 * 60 * 60 * 1000) })
       await service.runCycle()
 
       expect(service.statebox.stopped).to.eql(['b'])
       expect(service.listFeeds()[0].viewers).to.eql(['a'])
     })
 
-    it('keeps a card in a background tab that has polled within the 3-minute default', async () => {
-      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 150000) })
+    it('keeps a card in a background tab that has polled within the hour (the default)', async () => {
+      service.statebox = fakeStatebox({ a: running(), b: running(T0 - 50 * 60 * 1000) })
       await service.runCycle()
 
       expect(service.statebox.stopped).to.eql([])
@@ -671,7 +671,7 @@ describe('Live feed', () => {
     it('records viewers dropped and stopped', async () => {
       service.subscribe({ feed: 'live', input: { n: 1 }, fetchFunction: 'test_fetch', executionName: 'b', userId: 'bob' })
       service.subscribe({ feed: 'live', input: { n: 1 }, fetchFunction: 'test_fetch', executionName: 'c', userId: 'carol' })
-      service.statebox = fakeStatebox({ a: running(), b: { status: 'STOPPED' }, c: running(T0 - 240000) })
+      service.statebox = fakeStatebox({ a: running(), b: { status: 'STOPPED' }, c: running(T0 - 2 * 60 * 60 * 1000) })
 
       await service.runCycle()
 
