@@ -383,6 +383,22 @@ describe('Live feed', () => {
       expect(service.listFeeds()[0].viewers).to.eql(['a'])
     })
 
+    it('keeps a finished feed when a card whose data could not be presented could not be completed either', async () => {
+      service.functions.functions.test_fetch.func = async () => ({ data: { closed: true }, finished: true })
+      service.functions.functions.test_present.func = async (event, env, context) => {
+        if (context.userId === 'bob') throw new Error('roles unavailable')
+        return event
+      }
+      service.statebox.sendTaskLastHeartbeat = async function (name, result) {
+        if (name === 'b') throw new Error('connection reset')
+        this.heartbeats.push({ name, last: true })
+        return { status: 'RUNNING' }
+      }
+
+      await service.runCycle()
+      expect(service.listFeeds().length).to.eql(1)
+    })
+
     it('keeps a finished feed until every open card has been completed', async () => {
       service.functions.functions.test_fetch.func = async () => ({ data: { closed: true }, finished: true })
       let fail = true
@@ -593,6 +609,31 @@ describe('Live feed', () => {
       expect(count).to.eql(1)
       expect(queries.map(q => q.status.equals)).to.eql(['RUNNING', 'RUNNING'])
       expect(service.listFeeds()).to.eql([{ key: 'jobSummary:{"jobId":1}', feed: 'jobSummary', viewers: ['open-card'] }])
+    })
+
+    it('re-subscribes cards stored as JSON text, as statebox saves them in Postgres', async () => {
+      const service = makeService({ functions: {} })
+      service.services = {
+        statebox: { findStates: () => [{ stateMachine: { name: 'test_getJobSummary_1_0' } }] },
+        storage: {
+          models: {
+            tymly_execution: {
+              find: async () => [
+                {
+                  executionName: 'open-card',
+                  executionOptions: JSON.stringify({ userId: 'alice' }),
+                  ctx: JSON.stringify({ liveFeedSubscription: { feed: 'jobSummary', input: { jobId: 1 }, fetchFunction: 'f' } })
+                },
+                { executionName: 'broken', executionOptions: '{', ctx: 'not json' }
+              ]
+            }
+          }
+        }
+      }
+
+      expect(await service.resubscribeRunningViewers()).to.eql(1)
+      expect(service.listFeeds()).to.eql([{ key: 'jobSummary:{"jobId":1}', feed: 'jobSummary', viewers: ['open-card'] }])
+      expect(service.status().feeds[0].viewers[0].userId).to.eql('alice')
     })
 
     it('does nothing without storage', async () => {
