@@ -1,0 +1,31 @@
+{
+  "title": "Live Feed Events",
+  "description": "Notable events from the shared live feeds (subscribed, data changed, dropped, stopped, failed), for looking into cards that didn't update. Deleted after realtime_liveFeedEventRetentionDays (default 30).",
+  "type": "object",
+  "audit": false,
+  "properties": {
+    "event": {
+      "type": "string",
+      "description": "SUBSCRIBED, RESUBSCRIBED, CHANGED, FINISHED, DROPPED, STOPPED or FAILED"
+    },
+    "feedKey": {
+      "type": "string"
+    },
+    "feed": {
+      "type": "string"
+    },
+    "executionName": {
+      "type": "string"
+    },
+    "userId": {
+      "type": "string"
+    },
+    "userEmail": {
+      "type": "string",
+      "description": "The user's email address, looked up from userId when they subscribed"
+    },
+    "detail": {
+      "type": "string"
+    }
+  }
+}

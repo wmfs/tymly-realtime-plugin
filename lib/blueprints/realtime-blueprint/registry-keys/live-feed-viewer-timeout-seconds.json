@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Viewer Timeout Seconds",
+  "description": "Stop a live card that nobody has polled for this long, e.g. its tab was closed. Long enough that cards left in a background tab (whose polling the browser slows or pauses) keep going.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_VIEWER_TIMEOUT_SECONDS",
+      "value": {
+        "type": "integer",
+        "default": 3600
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

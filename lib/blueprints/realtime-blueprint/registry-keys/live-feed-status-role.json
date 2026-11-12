@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Status Role",
+  "description": "Role needed to see GET /live-feed/status. Defaults to the Realtime Admin role (realtime_admin) from this plugin.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_STATUS_ROLE",
+      "value": {
+        "type": "string",
+        "default": "realtime_admin"
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}
