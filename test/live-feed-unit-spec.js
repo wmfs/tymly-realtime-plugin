@@ -221,17 +221,34 @@ describe('Live feed', () => {
       await service.runCycle()
       const third = service.statebox.heartbeats.slice(2)
       expect(third.length).to.eql(2)
-      expect(Object.keys(third[0].data)).to.eql(['timestamp'])
+      expect(third[0].data.items).to.eql([1, 2]) // the full data, so a card that lost it is repaired
+      expect(third[0].data.timestamp).to.not.eql(undefined)
     })
 
-    it('sends only a timestamp every refresh when the timestamp refresh is 0', async () => {
+    it('writes every refresh when the timestamp refresh is 0', async () => {
       service.timestampRefreshSeconds = 0
       await service.runCycle()
       await service.runCycle()
 
       const second = service.statebox.heartbeats.slice(2)
       expect(second.length).to.eql(2)
-      expect(Object.keys(second[0].data)).to.eql(['timestamp'])
+      expect(second[0].data.items).to.eql([1, 2])
+    })
+
+    it('repairs a card whose data was overwritten, when its timestamp is next due', async () => {
+      let now = T0
+      service.now = () => now
+      service.timestampRefreshSeconds = 300
+      service.viewerTimeoutSeconds = 100000
+
+      await service.runCycle()
+      // a browser poll saved an older copy of the row over the heartbeat: the feed can't tell,
+      // but the next timestamp update carries the full data again
+      now += 300 * 1000
+      await service.runCycle()
+
+      const repaired = service.statebox.heartbeats.slice(2)
+      expect(repaired.map(h => h.data.items)).to.eql([[1, 2], [1, 2]])
     })
 
     it('still completes a viewer whose data could not be presented when the feed finishes', async () => {
@@ -324,7 +341,7 @@ describe('Live feed', () => {
       expect(service.listFeeds()).to.eql([])
     })
 
-    it('drops a viewer that cannot be updated', async () => {
+    it('drops a viewer whose update is refused', async () => {
       service.statebox.sendTaskHeartbeat = async function (name) {
         if (name === 'b') return { status: 'FAILED', errorCode: '401', errorMessage: 'not allowed' }
         this.heartbeats.push({ name })
@@ -333,6 +350,58 @@ describe('Live feed', () => {
 
       await service.runCycle()
       expect(service.listFeeds()[0].viewers).to.eql(['a'])
+    })
+
+    it('keeps a viewer whose update failed but whose card is still open, and sends everything next time', async () => {
+      let fail = true
+      service.statebox.sendTaskHeartbeat = async function (name, result) {
+        if (name === 'b' && fail) throw new Error('connection reset')
+        this.heartbeats.push({ name, data: result.requiredHumanInput.data, last: false })
+        return { status: 'RUNNING' }
+      }
+
+      await service.runCycle()
+      expect(service.listFeeds()[0].viewers).to.eql(['a', 'b'])
+
+      fail = false
+      await service.runCycle()
+      const b = service.statebox.heartbeats.filter(h => h.name === 'b')
+      expect(b.length).to.eql(1)
+      expect(b[0].data.items).to.eql([1, 2])
+    })
+
+    it('drops a viewer whose update failed because its card has closed', async () => {
+      service.statebox.sendTaskHeartbeat = async function (name) {
+        if (name === 'b') throw new Error('Heartbeat has been rejected because execution is not running')
+        this.heartbeats.push({ name })
+        return { status: 'RUNNING' }
+      }
+      const describe = service.statebox.describeExecution
+      service.statebox.describeExecution = async name => name === 'b' ? { status: 'STOPPED' } : describe(name)
+
+      await service.runCycle()
+      expect(service.listFeeds()[0].viewers).to.eql(['a'])
+    })
+
+    it('keeps a finished feed until every open card has been completed', async () => {
+      service.functions.functions.test_fetch.func = async () => ({ data: { closed: true }, finished: true })
+      let fail = true
+      const statuses = { a: 'RUNNING', b: 'RUNNING' }
+      service.statebox.describeExecution = async name => ({ ...running(), status: statuses[name] })
+      service.statebox.sendTaskLastHeartbeat = async function (name, result) {
+        if (name === 'b' && fail) throw new Error('connection reset')
+        this.heartbeats.push({ name, data: result.requiredHumanInput.data, last: true })
+        statuses[name] = 'SUCCEEDED'
+        return { status: 'RUNNING' }
+      }
+
+      await service.runCycle()
+      expect(service.listFeeds().length).to.eql(1)
+
+      fail = false
+      await service.runCycle()
+      expect(service.statebox.heartbeats.map(h => h.name)).to.eql(['a', 'b'])
+      expect(service.listFeeds()).to.eql([])
     })
 
     it('completes the viewers with a last heartbeat and drops the feed once the fetch says it has finished', async () => {
