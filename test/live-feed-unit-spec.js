@@ -127,6 +127,38 @@ describe('Live feed', () => {
       expect(service.msUntilNextWake()).to.eql(14000) // 12:00:25, before the minute cycle at 12:01:10
     })
 
+    it('never wakes sooner than a second, however overdue a feed is', () => {
+      service.subscribe({ feed: 'x', fetchFunction: 'test_fetch', executionName: 'a' })
+      service.feeds.values().next().value.nextDueAt = now - 60000
+      expect(service.msUntilNextWake()).to.eql(1000)
+    })
+
+    it('waits for the next slot while paused, rather than waking straight away', async () => {
+      service.subscribe({ feed: 'fast', fetchFunction: 'test_fetch', intervalSeconds: 15, executionName: 'a' })
+      service.paused = true
+      service.registryKeyModel = null // keep paused, don't re-read the settings
+
+      now = Date.parse('2026-11-10T12:00:40Z') // the feed was due at 12:00:10
+      await service.runCycle({ dueOnly: true })
+
+      expect(fetched).to.eql([])
+      expect(service.msUntilNextWake()).to.eql(15000) // its next slot, 12:00:55, rather than straight away
+    })
+
+    it('runs one scheduled cycle per wake while paused', async () => {
+      service.subscribe({ feed: 'fast', fetchFunction: 'test_fetch', intervalSeconds: 15, executionName: 'a' })
+      service.paused = true
+      service.registryKeyModel = null
+      const waits = []
+      service.scheduleNextCycle = () => { waits.push(service.msUntilNextWake()) }
+
+      now = Date.parse('2026-11-10T12:00:40Z')
+      await service.runScheduledCycle()
+      await service.runScheduledCycle()
+
+      expect(waits.every(ms => ms >= 1000)).to.eql(true)
+    })
+
     it('refreshes every feed when not limited to the due ones', async () => {
       service.subscribe({ feed: 'fast', input: { which: 'fast' }, fetchFunction: 'test_fetch', intervalSeconds: 15, executionName: 'a' })
       service.subscribe({ feed: 'slow', input: { which: 'slow' }, fetchFunction: 'test_fetch', executionName: 'b' })
@@ -146,6 +178,19 @@ describe('Live feed', () => {
       expect(feeds.length).to.eql(2)
       expect(feeds[0].viewers).to.eql(['a', 'b'])
       expect(feeds[1].viewers).to.eql(['c'])
+    })
+
+    it('does not share a feed between subscriptions with different functions', () => {
+      const service = new LiveFeedService()
+      service.subscribe({ feed: 'summary', input: { id: 1 }, fetchFunction: 'a_fetch', presentFunction: 'a_hideDetails', executionName: 'x' })
+      service.subscribe({ feed: 'summary', input: { id: 1 }, fetchFunction: 'b_fetch', executionName: 'y' })
+      service.subscribe({ feed: 'summary', input: { id: 1 }, fetchFunction: 'a_fetch', presentFunction: 'a_hideDetails', executionName: 'z' })
+
+      const feeds = service.status().feeds
+      expect(feeds.length).to.eql(2)
+      expect(feeds.find(f => f.fetchFunction === 'a_fetch').viewers.map(v => v.executionName)).to.eql(['x', 'z'])
+      expect(feeds.find(f => f.fetchFunction === 'b_fetch').presentFunction).to.eql(null)
+      service.shutdown()
     })
 
     it('needs a feed name, fetch function and execution name', () => {
@@ -399,6 +444,26 @@ describe('Live feed', () => {
       expect(service.listFeeds().length).to.eql(1)
     })
 
+    it('keeps a finished feed for a card that subscribed while it was finishing', async () => {
+      let late = false
+      service.functions.functions.test_fetch.func = async () => ({ data: { closed: true }, finished: true })
+      // c subscribes while the last updates are being sent to a and b
+      service.functions.functions.test_present.func = async event => {
+        if (!late) {
+          late = true
+          service.subscribe({ feed: 'live', input: {}, fetchFunction: 'test_fetch', presentFunction: 'test_present', executionName: 'c', userId: 'carol' })
+        }
+        return event
+      }
+      service.statebox = fakeStatebox({ a: running(), b: running(), c: running() })
+
+      await service.runCycle()
+      expect(service.listFeeds()[0].viewers).to.include('c')
+
+      await service.runCycle()
+      expect(service.statebox.heartbeats.filter(h => h.name === 'c').map(h => h.last)).to.eql([true])
+    })
+
     it('keeps a finished feed until every open card has been completed', async () => {
       service.functions.functions.test_fetch.func = async () => ({ data: { closed: true }, finished: true })
       let fail = true
@@ -508,6 +573,16 @@ describe('Live feed', () => {
 
       expect(calls).to.eql(1)
       expect(otherFetches).to.eql(2)
+    })
+
+    it('moves a skipped feed on to its next slot, so the timer does not spin', async () => {
+      await service.runCycle()
+      const slow = [...service.feeds.values()].find(e => e.feed === 'slow')
+      slow.nextDueAt = service.now() - 1000 // overdue
+      await service.runCycle({ dueOnly: true })
+
+      expect(slow.nextDueAt).to.be.above(service.now())
+      expect(service.msUntilNextWake()).to.be.at.least(1000)
     })
 
     it('tries the feed again once a timed-out refresh has waited six times the limit', async () => {
@@ -665,7 +740,17 @@ describe('Live feed', () => {
       await service.runCycle()
 
       expect(events.map(e => e.event)).to.eql(['SUBSCRIBED', 'CHANGED'])
-      expect(events[1]).to.include({ feed: 'live', feedKey: 'live:{"n":1}', executionName: 'a', userId: 'alice' })
+      expect(events[1]).to.include({ feed: 'live', feedKey: 'live:{"n":1}', executionName: null, detail: '1 of 1 viewer(s) sent new data' })
+    })
+
+    it('records one change per refresh, however many viewers it updated', async () => {
+      service.subscribe({ feed: 'live', input: { n: 1 }, fetchFunction: 'test_fetch', executionName: 'b', userId: 'bob' })
+      service.statebox = fakeStatebox({ a: running(), b: running() })
+      await service.runCycle()
+
+      const changes = events.filter(e => e.event === 'CHANGED')
+      expect(changes.length).to.eql(1)
+      expect(changes[0].detail).to.eql('2 of 2 viewer(s) sent new data')
     })
 
     it('records viewers dropped and stopped', async () => {
@@ -753,7 +838,7 @@ describe('Live feed', () => {
       const viewers = service.status().feeds[0].viewers
       expect(viewers.find(v => v.executionName === 'b').userEmail).to.eql('bob@example.com')
       expect(events.filter(e => e.event === 'SUBSCRIBED' && e.userId === 'bob').map(e => e.userEmail)).to.eql(['bob@example.com', 'bob@example.com'])
-      expect(events.filter(e => e.event === 'CHANGED' && e.userId === 'bob')[0].userEmail).to.eql('bob@example.com')
+      expect(service.status().feeds[0].viewers.find(v => v.executionName === 'b').userEmail).to.eql('bob@example.com')
     })
 
     it('carries on without an email when it cannot be looked up', async () => {
