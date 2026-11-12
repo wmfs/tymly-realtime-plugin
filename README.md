@@ -50,6 +50,7 @@ Registry keys, read at the start of every refresh, so changing them in the datab
 | `realtime_liveFeedEventRetentionDays` | `LIVE_FEED_EVENT_RETENTION_DAYS` | 30 |
 | `realtime_liveFeedStatusRole` | `LIVE_FEED_STATUS_ROLE` | `realtime_admin` |
 | `realtime_liveFeedDebug` | `LIVE_FEED_DEBUG` | false |
+| `realtime_liveFeedRecordChanges` | `LIVE_FEED_RECORD_CHANGES` | true |
 | `realtime_liveFeedPaused` | `LIVE_FEED_PAUSED` | false |
 
 Feeds refresh on a schedule aligned to the clock: with the defaults, at 10 and 40 seconds past each minute. An unchanged card isn't written to, apart from every `realtime_liveFeedTimestampRefreshSeconds`, when it's written again with its data and a new `timestamp`. That also repairs a card whose data was overwritten by a browser poll at the same moment as an update.
@@ -68,6 +69,7 @@ Feeds are held in memory, so this assumes one Tymly instance per database.
 
 - `GET /live-feed/status`, for users with the **Realtime Admin** role (`realtime_admin`): settings, feeds and their viewers, last run, last error.
 - `realtime.live_feed_event`: notable events (subscribed, re-subscribed, changed, finished, dropped, stopped, failed), with the user's id and email, kept for `realtime_liveFeedEventRetentionDays`.
+- `realtime_liveFeedRecordChanges` set to false stops recording `CHANGED` events, the most frequent kind, and keeps the rest. Use it, or a shorter retention, if the table grows more than you'd like.
 - `realtime_liveFeedDebug` set to true logs one line per feed per refresh.
 
 ## Testing

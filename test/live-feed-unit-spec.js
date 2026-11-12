@@ -743,6 +743,14 @@ describe('Live feed', () => {
       expect(events[1]).to.include({ feed: 'live', feedKey: 'live:{"n":1}', executionName: null, detail: '1 of 1 viewer(s) sent new data' })
     })
 
+    it('leaves out changes when realtime_liveFeedRecordChanges is false, and still updates the cards', async () => {
+      service.recordChanges = false
+      await service.runCycle()
+
+      expect(events.map(e => e.event)).to.eql(['SUBSCRIBED'])
+      expect(service.status().feeds[0].viewers[0].lastChangedAt).to.not.eql(null)
+    })
+
     it('records one change per refresh, however many viewers it updated', async () => {
       service.subscribe({ feed: 'live', input: { n: 1 }, fetchFunction: 'test_fetch', executionName: 'b', userId: 'bob' })
       service.statebox = fakeStatebox({ a: running(), b: running() })

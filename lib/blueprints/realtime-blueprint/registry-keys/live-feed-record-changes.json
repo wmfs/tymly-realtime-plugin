@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Record Changes",
+  "description": "true records a CHANGED event in realtime.live_feed_event for every refresh that sent new data. false leaves them out (the most frequent event), keeping the other events.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_RECORD_CHANGES",
+      "value": {
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}
