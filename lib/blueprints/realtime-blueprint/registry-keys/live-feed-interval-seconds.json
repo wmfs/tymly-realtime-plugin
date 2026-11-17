@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Interval Seconds",
+  "description": "How often the shared live feeds refresh, unless a feed sets its own intervalSeconds in the subscribeToLiveFeed ResourceConfig. Takes effect from the next cycle.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_INTERVAL_SECONDS",
+      "value": {
+        "type": "integer",
+        "default": 30
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

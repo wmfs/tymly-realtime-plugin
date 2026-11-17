@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Refresh Timeout Seconds",
+  "description": "The longest one feed's refresh may take. After this it's counted as failed and the other feeds carry on, so a data source that hangs can't stop every live card updating. The feed is tried again once its data source answers, or after six times this long if it never does.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_REFRESH_TIMEOUT_SECONDS",
+      "value": {
+        "type": "integer",
+        "default": 20
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "namespace": "realtime",
+  "name": "realtime-plugin",
+  "version": "1.0",
+  "label": "Realtime Blueprint",
+  "author": "WMFS",
+  "organisation": "WMFS",
+  "description": "Settings, role and event log for the realtime plugin's live feeds",
+  "categories": [
+    "tymly"
+  ]
+}

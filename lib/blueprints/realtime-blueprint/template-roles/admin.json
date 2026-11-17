@@ -1,0 +1,4 @@
+{
+  "label": "Realtime Admin",
+  "description": "Can see the live feed status (GET /live-feed/status): the feeds behind live cards, their viewers and recent errors"
+}

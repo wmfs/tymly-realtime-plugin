@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Event Retention Days",
+  "description": "How long rows are kept in realtime.live_feed_event. Old rows are deleted on boot and once a day.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_EVENT_RETENTION_DAYS",
+      "value": {
+        "type": "integer",
+        "default": 30
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

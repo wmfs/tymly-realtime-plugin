@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Paused",
+  "description": "true stops all live feed refreshing (no fetching, writing or stopping cards) until it's set back to false. Open cards keep what they last showed. Takes effect from the next cycle, without a restart.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_PAUSED",
+      "value": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Debug",
+  "description": "true logs one line per live feed per cycle.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_DEBUG",
+      "value": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

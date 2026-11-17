@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Offset Seconds",
+  "description": "How many seconds past each interval the live feeds refresh, set to just after your data source updates.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_OFFSET_SECONDS",
+      "value": {
+        "type": "integer",
+        "default": 10
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

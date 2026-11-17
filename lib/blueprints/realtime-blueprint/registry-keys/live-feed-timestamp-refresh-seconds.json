@@ -1,0 +1,16 @@
+{
+  "label": "Live Feed Timestamp Refresh Seconds",
+  "description": "When a live card's data hasn't changed, it isn't rewritten. Its 'up to date as of' time is still moved on this often, so a card that has stopped refreshing can be spotted. 0 rewrites it every refresh.",
+  "schema": {
+    "properties": {
+      "environmentVariableName": "LIVE_FEED_TIMESTAMP_REFRESH_SECONDS",
+      "value": {
+        "type": "integer",
+        "default": 300
+      }
+    },
+    "required": [
+      "value"
+    ]
+  }
+}

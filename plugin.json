@@ -1,0 +1,11 @@
+{
+  "name": "realtime",
+  "version": "0.0.0",
+  "label": "Realtime",
+  "author": "Meena Hoda",
+  "organisation": "West Midlands Fire Service",
+  "description": "Keeps open cards up to date as data changes, starting with shared live feeds",
+  "categories": [
+    "realtime"
+  ]
+}
